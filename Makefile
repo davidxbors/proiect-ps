@@ -9,3 +9,6 @@ clean:
 
 super-clean:
 	rm ./src/data/*
+
+open:
+	open ./src/data/dopler_fft.html

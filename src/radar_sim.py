@@ -2,12 +2,10 @@ import numpy as np
 from scipy import signal, fft, linalg
 from radarsimpy import Radar, Transmitter, Receiver
 import plotly.graph_objs as go
-import plotly.io as pio
 from radarsimpy.simulator import simc
-import radarsimpy.processing as proc
+from radar_proc import range_doppler_fft
+from utils import EXPORT_PATH
 from typing import Dict, List
-
-EXPORT_PATH = "./data/"
 
 def create_radar(show_plot: bool = False):
     """
@@ -20,7 +18,7 @@ def create_radar(show_plot: bool = False):
         Radar: radar object
     """
     # configure a MIMO array with 2 transmitter channels and 64 receiver channels
-    # TODO: why is the wavelength here this value?
+    # standard wavelength c / f
     wavelength = 3e8 / 60.5e9
 
     # receiver
@@ -153,11 +151,9 @@ def load_data(stub_name: str):
     return baseband, timestamp
 
 if __name__ == "__main__":
-    print("test_data")
     radar = create_radar(False)
     # targets = create_targets(3, [-5, -4, 45])
     targets = create_targets(1, [5])
-    print("before data creation")
     # data = simulate(radar=radar, targets=targets)
 
     # # cache data for further use
@@ -165,58 +161,3 @@ if __name__ == "__main__":
     # np.save("timestamp_15.npy", data["timestamp"])
 
     baseband, timestamp = load_data("15")
-    print("loaded data")
-
-    # TODO: processing
-
-    # TODO: what does this function do
-    range_window = signal.windows.chebwin(radar.sample_prop["samples_per_pulse"], at=80)
-    doppler_window = signal.windows.chebwin(radar.radar_prop["transmitter"].waveform_prop["pulses"], at=60)
-
-    # TODO: replace with own function
-    range_doppler = proc.range_doppler_fft(
-        baseband, rwin=range_window, dwin=doppler_window)
-
-    no_tx = 2
-    no_rx = 64
-
-    # TODO: comm this
-    det_idx = [np.argmax(np.mean(np.abs(range_doppler[:, 0, :]), axis=0))]
-
-    # TODO: comm this
-    bv = range_doppler[:, 0, det_idx[0]]
-    bv = bv/linalg.norm(bv)
-
-    snapshots = 20
-
-    # TODO: comment this
-    bv_snapshot = np.zeros((no_tx*no_rx-snapshots, snapshots), dtype=complex)
-
-    # TODO: comment this
-    for idx in range(0, snapshots):
-        bv_snapshot[:, idx] = bv[idx:(idx+no_tx*no_rx-snapshots)]
-
-    # create covarience matrix
-    covmat = np.cov(bv_snapshot.conjugate())
-
-    # apply fft on bv conjugated
-    fft_spec = 20 * \
-        np.log10(np.abs(fft.fftshift(fft.fft(bv.conjugate(), n=1024))))
-
-    # plot FFT
-    fig = go.Figure()
-
-    fig.add_trace(go.Scatter(x=np.arcsin(np.linspace(-1, 1, 1024, endpoint=False))/np.pi*180,
-                            y=fft_spec,
-                            name='FFT')
-                )
-
-    fig.update_layout(
-        title='FFT',
-        yaxis=dict(title='Amplitude (dB)'),
-        xaxis=dict(title='Angle (deg)'),
-        margin=dict(l=10, r=10, b=10, t=40),
-    )
-
-    # save plot
-    fig.write_html(f'{EXPORT_PATH}dopler_fft.html')
