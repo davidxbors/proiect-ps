@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+  doa_project:
+    image: doa_project:0.2.4
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./src:/src
