@@ -103,3 +103,17 @@ def root_music(covmat, no_targets, spacing):
 
     # return the angles in degrees
     return np.degrees(np.arcsin(sins))
+
+def espirit(covmat, no_targets, spacing):
+    _, eig_vectors = linalg.eigh(covmat)
+
+    # no_targets largest eigenvalues from the eigenvector matrix
+    signal = eig_vectors[:, -no_targets:]
+
+    # calculate rotational invariance among the signal subspaces
+    phi = linalg.pinv(signal[0:-1]) @ signal[1:]
+    eig_values = linalg.eigvals(phi)
+
+    # compute phases of eigenvalues, divides them by pi and scales them
+    # then it returns the angle in degreees
+    return np.degrees(np.arcsin(np.angle(eig_values) / np.pi / (spacing / 0.5))) 

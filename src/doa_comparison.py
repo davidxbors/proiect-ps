@@ -5,7 +5,7 @@ import plotly.graph_objs as go
 from radarsimpy.simulator import simc
 import radarsimpy
 
-from radar_proc import range_doppler_fft, doa_music, root_music
+from radar_proc import range_doppler_fft, doa_music, root_music, espirit
 from utils import EXPORT_PATH
 
 import radar_sim
@@ -155,4 +155,5 @@ if __name__ == "__main__":
     rootmusic_found_target = root_music(covmat, no_targets, 0.5)
     show_prompt(target_angles[0], rootmusic_found_target[0])
 
-    # TODO: espirit
+    espirit_found_target = espirit(covmat, no_targets, 0.5)
+    show_prompt(target_angles[0], espirit_found_target[0])
