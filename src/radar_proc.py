@@ -68,3 +68,38 @@ def doa_music(covmat, no_targets, angle_scan, spacing):
     doa_idx = local_maxima[np.argsort(spec_db[local_maxima])[-no_targets:]]
 
     return angle_scan[doa_idx], doa_idx, spec_db
+
+def root_music(covmat, no_targets, spacing):
+    # get number of elements in the sensor array
+    n = np.shape(covmat)[0] 
+    
+    # get eigenvectors from covariance matrix
+    _, eig = linalg.eigh(covmat)
+    # select the columns coresponding to the noise
+    noise = eig[:, :-no_targets]
+
+    noise_matrix = noise @ noise.T.conj()
+    coef = np.zeros((n - 1,), dtype=np.complex_)
+
+    coef[:n - 1] = [np.trace(noise_matrix, i) for i in range(1, n)]
+    coef = np.hstack((coef[::-1], np.trace(noise_matrix), coef.conj()))
+
+    # get roots of polynom
+    roots = np.roots(coef)
+
+    # mask to identify the roots that are inside or on the unit circle
+    mask = np.abs(roots) <= 1
+
+    # if a point is on the unit circle we need to find the closest point and remove it
+    for _, i in enumerate(np.where(np.abs(roots) == 1)[0]):
+        mask[np.argsort(np.abs(roots - roots[i]))[1]] = False
+
+    # exclude the closest pairs
+    roots = roots[mask]
+    # sort the roots by how close they are to the unit circle
+    sorted_idx = np.argsort(1.0 - np.abs(roots))
+    # get the no_targets roots closest to the circle and compute their angles' sines
+    sins = np.angle(roots[sorted_idx[:no_targets]]) / (2 * np.pi * spacing)
+
+    # return the angles in degrees
+    return np.degrees(np.arcsin(sins))
