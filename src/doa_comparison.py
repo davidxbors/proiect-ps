@@ -4,7 +4,9 @@ from scipy import signal, fft, linalg
 import plotly.graph_objs as go
 from radarsimpy.simulator import simc
 import radarsimpy
-from radar_proc import range_doppler_fft
+from radarsimpy.processing import doa_music as dm
+
+from radar_proc import range_doppler_fft, doa_music
 from utils import EXPORT_PATH
 
 import radar_sim
@@ -47,7 +49,7 @@ def range_doppler(radar: radarsimpy.Radar, baseband: np.ndarray, single_target_m
         single_target_mode (bool, optional): Wether we have only one target or not. Defaults to True.
 
     Returns:
-        Optional[float]: Found angle. Only in single mode.
+        Optional[float, ndarray]: Found angle and covariance matrix. Only in single mode.
     """
     # generate a Chebyshev window for range processing
     range_window = signal.windows.chebwin(radar.sample_prop["samples_per_pulse"], at=80)
@@ -98,7 +100,43 @@ def range_doppler(radar: radarsimpy.Radar, baseband: np.ndarray, single_target_m
 
     if single_target_mode:
         angles = np.arcsin(np.linspace(-1, 1, 1024, endpoint=False)) / np.pi * 180
-        return angles[np.argmax(fft_spec)]
+        return angles[np.argmax(fft_spec)], covmat
+
+def music(covmat, no_targets):
+    angle_scan = np.arange(-90, 90, 0.1)
+    np_angle_scan = np.array(angle_scan)
+    music_doa, music_idx, ps_db = doa_music(covmat, no_targets, np_angle_scan, 0.5) 
+
+    fig = go.Figure()
+
+    fig.add_trace(go.Scatter(x=angle_scan,
+                            y=ps_db,
+                            name='Pseudo Spectrum')
+                )
+
+    fig.add_trace(go.Scatter(x=music_doa,
+                            y=ps_db[music_idx],
+                            mode='markers',
+                            name='Estimated DoA')
+                )
+    fig.update_layout(
+        title='MUSIC',
+        yaxis=dict(title='Amplitude (dB)'),
+        xaxis=dict(title='Angle (deg)'),
+        margin=dict(l=10, r=10, b=10, t=40),
+    )
+
+    # save plot
+    fig.write_html(f'{EXPORT_PATH}music.html')
+
+    return music_doa
+
+def show_prompt(target, found):
+    err = abs(target - found)
+    err_percent = err / target * 100
+    print(f"Found target: {found}")
+    print("Err: " + str(err))
+    print("Err %: " + str(err_percent))
 
 if __name__ == "__main__":
     # get radar sim data
@@ -107,11 +145,15 @@ if __name__ == "__main__":
     radar, baseband, timestamp = get_data(no_targets=no_targets, target_angles=target_angles, load_stub="15")
 
     # perform range doppler processing
-    found_target = range_doppler(radar=radar, baseband=baseband)
+    found_target,  covmat = range_doppler(radar=radar, baseband=baseband)
 
     if found_target:
-        err = abs(5 - found_target)
-        err_percent = err / 5 * 100
-        print(f"Found target: {found_target}")
-        print("Err: " + str(err))
-        print("Err %: " + str(err_percent))
+        show_prompt(target_angles[0], found_target)
+    
+    music_found_target = music(covmat, no_targets)
+    show_prompt(target_angles[0],  music_found_target[0])
+
+    # TODO: Root-Music
+
+    
+    # TODO: espirit

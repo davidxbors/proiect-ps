@@ -12,3 +12,4 @@ super-clean:
 
 open:
 	open ./src/data/dopler_fft.html
+	open ./src/data/music.html
