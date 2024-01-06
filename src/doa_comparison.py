@@ -23,7 +23,6 @@ def get_data(no_targets: int, target_angles: List[int], load_stub: str = "", sav
         radarsimpy.Radar, np.ndarray, np.ndarray: Radar object, baseband and timestamp arrays 
     """
     radar = radar_sim.create_radar(False)
-    # targets = create_targets(3, [-5, -4, 45])
     targets = radar_sim.create_targets(no_targets, target_angles)
 
     if not load_stub:
@@ -33,6 +32,7 @@ def get_data(no_targets: int, target_angles: List[int], load_stub: str = "", sav
         # cache data for further use
         if save_stub:
             radar_sim.save_data(data, save_stub)
+            load_stub = save_stub
 
     baseband, timestamp = radar_sim.load_data(load_stub)
 
@@ -215,7 +215,7 @@ if __name__ == "__main__":
     target_angles = [4, 5, 25]
 
     # generate data as well
-    run_all(no_targets, target_angles, RunType.NORMAL, None, "34525")
+    # run_all(no_targets, target_angles, RunType.NORMAL, None, "34525")
 
-    # run_all(no_targets, target_angles, RunType.NORMAL, "34525")
-    # run_all(no_targets, target_angles, RunType.NORMAL, "34525")
+    run_all(no_targets, target_angles, RunType.NORMAL, "34525")
+    # run_all(no_targets, target_angles, RunType.PROFILING, "34525")
