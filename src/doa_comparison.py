@@ -6,7 +6,7 @@ from radarsimpy.simulator import simc
 import radarsimpy
 
 from radar_proc import range_doppler_fft, doa_music, root_music, espirit
-from utils import EXPORT_PATH
+from utils import EXPORT_PATH, profiler, profile, RunType
 
 import radar_sim
 
@@ -38,14 +38,14 @@ def get_data(no_targets: int, target_angles: List[int], load_stub: str = "", sav
 
     return radar, baseband, timestamp
 
-def range_doppler(radar: radarsimpy.Radar, baseband: np.ndarray, single_target_mode: bool =True):
+def range_doppler(radar: radarsimpy.Radar, baseband: np.ndarray, make_graph: bool = False):
     """
     Use Range-Doppler processing to get the azimuth angle of the target.
 
     Args:
         radar (radarsimpy.Radar): Radar object. 
         baseband (np.ndarray): Baseband data.
-        single_target_mode (bool, optional): Wether we have only one target or not. Defaults to True.
+        make_graph (bool, optional): Wether we generate a graph or not. Defaults to False.
 
     Returns:
         Optional[float, ndarray]: Found angle and covariance matrix. Only in single mode.
@@ -80,22 +80,23 @@ def range_doppler(radar: radarsimpy.Radar, baseband: np.ndarray, single_target_m
     fft_spec = 20 * np.log10(np.abs(fft.fftshift(fft.fft(bv.conjugate(), n=1024))))
 
     # plot FFT
-    fig = go.Figure()
+    if make_graph:
+        fig = go.Figure()
 
-    fig.add_trace(go.Scatter(x=np.arcsin(np.linspace(-1, 1, 1024, endpoint=False))/np.pi*180,
-                            y=fft_spec,
-                            name='FFT')
-                )
+        fig.add_trace(go.Scatter(x=np.arcsin(np.linspace(-1, 1, 1024, endpoint=False))/np.pi*180,
+                                y=fft_spec,
+                                name='FFT')
+                    )
 
-    fig.update_layout(
-        title='FFT',
-        yaxis=dict(title='Amplitude (dB)'),
-        xaxis=dict(title='Angle (deg)'),
-        margin=dict(l=10, r=10, b=10, t=40),
-    )
+        fig.update_layout(
+            title='FFT',
+            yaxis=dict(title='Amplitude (dB)'),
+            xaxis=dict(title='Angle (deg)'),
+            margin=dict(l=10, r=10, b=10, t=40),
+        )
 
-    # save plot
-    fig.write_html(f'{EXPORT_PATH}dopler_fft.html')
+        # save plot
+        fig.write_html(f'{EXPORT_PATH}dopler_fft.html')
 
     # get peaks to return as targets
     local_maxima, _ = signal.find_peaks(fft_spec)
@@ -106,32 +107,33 @@ def range_doppler(radar: radarsimpy.Radar, baseband: np.ndarray, single_target_m
 
     return doa_idx, covmat
 
-def music(covmat, no_targets):
+def music(covmat, no_targets, spacing, make_graph=False):
     angle_scan = np.arange(-90, 90, 0.1)
     np_angle_scan = np.array(angle_scan)
-    music_doa, music_idx, ps_db = doa_music(covmat, no_targets, np_angle_scan, 0.5) 
+    music_doa, music_idx, ps_db = doa_music(covmat, no_targets, np_angle_scan, spacing) 
 
-    fig = go.Figure()
+    if make_graph:
+        fig = go.Figure()
 
-    fig.add_trace(go.Scatter(x=angle_scan,
-                            y=ps_db,
-                            name='Pseudo Spectrum')
-                )
+        fig.add_trace(go.Scatter(x=angle_scan,
+                                y=ps_db,
+                                name='Pseudo Spectrum')
+                    )
 
-    fig.add_trace(go.Scatter(x=music_doa,
-                            y=ps_db[music_idx],
-                            mode='markers',
-                            name='Estimated DoA')
-                )
-    fig.update_layout(
-        title='MUSIC',
-        yaxis=dict(title='Amplitude (dB)'),
-        xaxis=dict(title='Angle (deg)'),
-        margin=dict(l=10, r=10, b=10, t=40),
-    )
+        fig.add_trace(go.Scatter(x=music_doa,
+                                y=ps_db[music_idx],
+                                mode='markers',
+                                name='Estimated DoA')
+                    )
+        fig.update_layout(
+            title='MUSIC',
+            yaxis=dict(title='Amplitude (dB)'),
+            xaxis=dict(title='Angle (deg)'),
+            margin=dict(l=10, r=10, b=10, t=40),
+        )
 
-    # save plot
-    fig.write_html(f'{EXPORT_PATH}music.html')
+        # save plot
+        fig.write_html(f'{EXPORT_PATH}music.html')
 
     return music_doa
 
@@ -148,17 +150,15 @@ def show_prompts(algorithm_promptname, targets, founds):
     for i in range(len(targets)):
         show_prompt(targets[i], founds[i])
 
-if __name__ == "__main__":
-    # get radar sim data
-    no_targets = 1
-    target_angles = [5]
-    radar, baseband, timestamp = get_data(no_targets=no_targets, target_angles=target_angles, load_stub="15")
+@profile
+def __generic_time_performance_wrapper(func, *args):
+    return func(*args)
 
-    # # perform range doppler processing
-    found_targets,  covmat = range_doppler(radar=radar, baseband=baseband)
+def run_all_normal(no_targets, target_angles, radar, baseband, mode):
+    found_targets,  covmat = range_doppler(radar, baseband, mode)
     show_prompts("Range-Dopler FFT", target_angles, found_targets)
 
-    music_found_targets = music(covmat, no_targets)
+    music_found_targets = music(covmat, no_targets, 0.5, mode)
     show_prompts("MUSIC", target_angles, music_found_targets)
 
     rootmusic_found_targets = root_music(covmat, no_targets, 0.5)
@@ -166,3 +166,56 @@ if __name__ == "__main__":
 
     espirit_found_targets = espirit(covmat, no_targets, 0.5)
     show_prompts("ESPIRIT", target_angles, espirit_found_targets)
+
+def run_all_profiling(no_targets, target_angles, radar, baseband, mode):
+    found_targets, covmat = __generic_time_performance_wrapper(range_doppler, radar, baseband)
+
+    profiler.print_stats()
+    show_prompts("Range-Dopler FFT", target_angles, found_targets)
+
+    music_found_targets = __generic_time_performance_wrapper(music, covmat, no_targets, 0.5)
+
+    profiler.print_stats()
+    show_prompts("MUSIC", target_angles, music_found_targets)
+
+    rootmusic_found_targets = __generic_time_performance_wrapper(root_music, covmat, no_targets, 0.5)
+
+    profiler.print_stats()
+    show_prompts("ROOT MUSIC", target_angles, rootmusic_found_targets)
+
+    espirit_found_targets = __generic_time_performance_wrapper(espirit, covmat, no_targets, 0.5)
+
+    profiler.print_stats()
+    show_prompts("ESPIRIT", target_angles, espirit_found_targets)
+
+def run_all(no_targets, target_angles, mode, load_stub=None, save_stub=None):
+    # get radar sim data
+    radar, baseband, _ = get_data(
+        no_targets=no_targets,
+        target_angles=target_angles,
+        load_stub=load_stub,
+        save_stub=save_stub
+    )
+
+    if mode == RunType.NORMAL:
+        run_all_normal(no_targets, target_angles, radar, baseband, True)
+    elif mode == RunType.PROFILING:
+        run_all_profiling(no_targets, target_angles, radar, baseband, False)
+
+if __name__ == "__main__":
+    # single comparison
+    no_targets = 1
+    target_angles = [5]
+
+    # run_all(no_targets, target_angles, RunType.NORMAL, "15")
+    # run_all(no_targets, target_angles, RunType.PROFILING, "15")
+
+    # multiple (3) comparison
+    no_targets = 3
+    target_angles = [4, 5, 25]
+
+    # generate data as well
+    run_all(no_targets, target_angles, RunType.NORMAL, None, "34525")
+
+    # run_all(no_targets, target_angles, RunType.NORMAL, "34525")
+    # run_all(no_targets, target_angles, RunType.NORMAL, "34525")

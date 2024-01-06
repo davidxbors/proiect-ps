@@ -2,3 +2,4 @@ numpy==1.26.0
 plotly==5.18.0
 scipy==1.11.3
 kaleido==0.2.1
+line-profiler==4.1.2
