@@ -97,9 +97,14 @@ def range_doppler(radar: radarsimpy.Radar, baseband: np.ndarray, single_target_m
     # save plot
     fig.write_html(f'{EXPORT_PATH}dopler_fft.html')
 
-    if single_target_mode:
-        angles = np.arcsin(np.linspace(-1, 1, 1024, endpoint=False)) / np.pi * 180
-        return angles[np.argmax(fft_spec)], covmat
+    # get peaks to return as targets
+    local_maxima, _ = signal.find_peaks(fft_spec)
+    doa_idx = local_maxima[np.argsort(fft_spec[local_maxima])[-no_targets:]]
+
+    angles = np.arcsin(np.linspace(-1, 1, 1024, endpoint=False)) / np.pi * 180
+    doa_idx = [angles[idx] for idx in doa_idx]
+
+    return doa_idx, covmat
 
 def music(covmat, no_targets):
     angle_scan = np.arange(-90, 90, 0.1)
@@ -137,23 +142,27 @@ def show_prompt(target, found):
     print("Err: " + str(err))
     print("Err %: " + str(err_percent))
 
+def show_prompts(algorithm_promptname, targets, founds):
+    print(f"{algorithm_promptname}\nTargets: {targets}")
+
+    for i in range(len(targets)):
+        show_prompt(targets[i], founds[i])
+
 if __name__ == "__main__":
     # get radar sim data
     no_targets = 1
     target_angles = [5]
     radar, baseband, timestamp = get_data(no_targets=no_targets, target_angles=target_angles, load_stub="15")
 
-    # perform range doppler processing
-    found_target,  covmat = range_doppler(radar=radar, baseband=baseband)
+    # # perform range doppler processing
+    found_targets,  covmat = range_doppler(radar=radar, baseband=baseband)
+    show_prompts("Range-Dopler FFT", target_angles, found_targets)
 
-    if found_target:
-        show_prompt(target_angles[0], found_target)
-    
-    music_found_target = music(covmat, no_targets)
-    show_prompt(target_angles[0],  music_found_target[0])
+    music_found_targets = music(covmat, no_targets)
+    show_prompts("MUSIC", target_angles, music_found_targets)
 
-    rootmusic_found_target = root_music(covmat, no_targets, 0.5)
-    show_prompt(target_angles[0], rootmusic_found_target[0])
+    rootmusic_found_targets = root_music(covmat, no_targets, 0.5)
+    show_prompts("ROOT MUSIC", target_angles, rootmusic_found_targets)
 
-    espirit_found_target = espirit(covmat, no_targets, 0.5)
-    show_prompt(target_angles[0], espirit_found_target[0])
+    espirit_found_targets = espirit(covmat, no_targets, 0.5)
+    show_prompts("ESPIRIT", target_angles, espirit_found_targets)
