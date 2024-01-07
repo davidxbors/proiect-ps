@@ -105,7 +105,7 @@ def range_doppler(radar: radarsimpy.Radar, baseband: np.ndarray, make_graph: boo
     angles = np.arcsin(np.linspace(-1, 1, 1024, endpoint=False)) / np.pi * 180
     doa_idx = [angles[idx] for idx in doa_idx]
 
-    return doa_idx, covmat
+    return np.sort(doa_idx), covmat
 
 def music(covmat, no_targets, spacing, make_graph=False):
     angle_scan = np.arange(-90, 90, 0.1)
@@ -135,7 +135,7 @@ def music(covmat, no_targets, spacing, make_graph=False):
         # save plot
         fig.write_html(f'{EXPORT_PATH}music.html')
 
-    return music_doa
+    return np.sort(music_doa)
 
 def show_prompt(target, found):
     err = abs(target - found)
@@ -147,8 +147,9 @@ def show_prompt(target, found):
 def show_prompts(algorithm_promptname, targets, founds):
     print(f"{algorithm_promptname}\nTargets: {targets}")
 
-    for i in range(len(targets)):
-        show_prompt(targets[i], founds[i])
+    print(f"Found targets: {founds}")
+    # for i in range(len(targets)):
+    #     show_prompt(targets[i], founds[i])
 
 @profile
 def __generic_time_performance_wrapper(func, *args):
@@ -217,5 +218,23 @@ if __name__ == "__main__":
     # generate data as well
     # run_all(no_targets, target_angles, RunType.NORMAL, None, "34525")
 
-    run_all(no_targets, target_angles, RunType.NORMAL, "34525")
+    # run_all(no_targets, target_angles, RunType.NORMAL, "34525")
     # run_all(no_targets, target_angles, RunType.PROFILING, "34525")
+
+    # multiple (6) comparison
+    no_targets = 6
+    target_angles = [4.5, 5, 10, 15, 20, 25]
+
+    # run_all(no_targets, target_angles, RunType.NORMAL, None, "6")
+
+    # run_all(no_targets, target_angles, RunType.NORMAL, "6")
+    run_all(no_targets, target_angles, RunType.PROFILING, "6")
+
+    # multiple (10) comparison
+    no_targets = 10
+    target_angles = [2, 4.5, 5, 15, 20, 50, 50.25, 60, 70, 75]
+
+    # run_all(no_targets, target_angles, RunType.NORMAL, None, "10")
+
+    # run_all(no_targets, target_angles, RunType.NORMAL, "10")
+    run_all(no_targets, target_angles, RunType.PROFILING, "10")

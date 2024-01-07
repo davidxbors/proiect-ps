@@ -102,7 +102,7 @@ def root_music(covmat, no_targets, spacing):
     sins = np.angle(roots[sorted_idx[:no_targets]]) / (2 * np.pi * spacing)
 
     # return the angles in degrees
-    return np.degrees(np.arcsin(sins))
+    return np.sort(np.degrees(np.arcsin(sins)))
 
 def espirit(covmat, no_targets, spacing):
     _, eig_vectors = linalg.eigh(covmat)
@@ -116,4 +116,4 @@ def espirit(covmat, no_targets, spacing):
 
     # compute phases of eigenvalues, divides them by pi and scales them
     # then it returns the angle in degreees
-    return np.degrees(np.arcsin(np.angle(eig_values) / np.pi / (spacing / 0.5))) 
+    return np.sort(np.degrees(np.arcsin(np.angle(eig_values) / np.pi / (spacing / 0.5))))
