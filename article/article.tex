@@ -1,0 +1,187 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage{biblatex}
+\usepackage{indentfirst}
+\usepackage{geometry}
+\geometry{
+	a4paper,
+	total={170mm,257mm},
+	left=20mm,
+	top=20mm,
+}
+\addbibresource{bibl.bib}
+
+\title{Comparație între diverși algoritmi de Estimare a Direcției unui Semnal}
+\author{David Bors, grupa 342C2, Facultatea de Automatica si Calculatoare, UNSTPB}
+\date{08.01.2024}
+
+\begin{document}
+\maketitle
+
+\section{Abstract}
+
+Estimarea Direcției de Sosire (DoA) este o tehnică esențială utilizată în sistemele radar pentru a determina direcția din care provine un semnal sau o țintă. Această tehnică este deosebit de valoroasă în aplicații precum supravegherea prin radar, urmărirea țintelor, navigație și sisteme de comunicații. Prin estimarea precisă a direcției de sosire a semnalelor care vin, sistemele radar pot localiza și urmări eficient obiectele de interes.
+
+In cadrul acestui proiect mi-am propus sa analizez mai multi algoritmi de estimare a directiei de sosire.
+In analiza am tinut cont, in primul rand de acuratete, aceasta reprezentand scopul final al algoritmilor.
+Am tinut cont, de asemenea, si de puterea computationala necesara fiecarui algoritm, acesta fiind de asemenea un factor important in aplicatiile reale.
+
+\section{Keywords}
+MUSIC,Root-MUSIC,ESPIRIT,DOA
+
+\section{Pregatire Tehnica}
+
+\subsection{Simulare Semnal}
+
+Algoritmii prezentati in acest proiect lucreaza cu semnale multidimensionale, ce provin de la un numar dat de senzori.
+Astfel, pentru a putea compara accuratetea acestora, avem nevoie in primul rand de o simulare a unor semnale multidimensionale.
+Pentru simulare, am ales sa folosesc biblioteca RadarSimPy \cite{radarsim}.
+
+Alegerea acestei biblioteci a reprezentat o prima provocare tehnica.
+Biblioteca vine precompilata, pentru mai multe arhitecturi de calcul, iar arhitectura calculatorului meu (ARM), nu este inclusa.
+Astfel, pentru a o putea folosi am emulat o arhitectura suportata, folosind Docker.
+
+Am pornit de la o imagine \verb|python:3.11.7-bookworm|.
+Numele reprezinta ca sistemul de operare folosit este Debian Bookworm, iar ca pe imagine \verb|Python 3.11.7| vine preinstalat.
+In cadrul acestei imagini am instalat bibliotecile folosite de proiect, si am setat drept comanda de inceput comanda ce ruleaza proiectul.
+Pentru a nu fi nevoie sa construiesc din nou imaginea la fiecare modificare in cod, am ales sa montez directorul \verb|src| in care se afla codul sursa la fiecare rulare.
+Fisierele folosite pentru a construi si rula imaginea se gasesc in cadrul proiectului in fisierele \verb|docker-compose.yml, Dockerfile, Makefile|.
+
+Cu acest mediu de dezvoltare finalizat, am reusit sa simulez semnalul pe care l-ar emite un singur obiect aflat in raza de actiune a radarelor simulate.
+Insa, astfel a aparut o a doua dificultate tehnica, si anume durata mare de rulare a codului care simuleaza semnalele.
+Simularea semnalului emis de trei obiecte dureaza minim 15 minute, astfel ca pentru o dezvoltare mai usoara si pentru a putea arata cum functioneaza proiectul si in timp real am decis sa fac caching cu datele simulate.
+De fiecare data cand generez o noua configuratie de obiecte, o salvez in \verb|src/data/| folosind fisiere de tipul \verb|.npy|.
+Apoi, cand doresc sa o refolosesc, datele nu sunt simulate in timp real ci doar preluate direct din fisierele mentionate mai sus.
+
+\subsection{Comparatia Algoritmilor}
+
+In cadrul acestui proiect doresc sa compar algoritmii din punct de vedere al acuratetii, dar si al puterii computationale necesare.
+
+Pentru comparatia acuratetii, am ales ca pentru fiecare algoritm sa compar estimarile cu pozitiile reale ale obiectelor, analizand eroarea estimarilor.
+Astfel, la finalul rularii algoritmului se afiseaza pentru fiecare obiect dat, estimarea pozitiei acestuia, eroare in valoare absoluta si eroare relativa.
+
+Pentru comparatia puterii computationale am decis sa compar timpii de rulare ai fiecarui algoritm.
+Astfel, am creat o functie generica wrapper, care sa execute algoritmii si sa returneze rezultatele acestora.
+Aceasta functie avea decoratorul \verb|@profile|.
+Cu ajutorul acestuia folosesc biblioteca \verb|line_profiler| pentru a analiza timpul de rulare al fiecarui algoritm.
+La finalul rularii, se vor afisa si statisticile de timp a fiecarui algoritm.
+
+\section{Implementare Algoritmi}
+
+\subsection{Range-Doppler FFT}
+
+Procesul începe prin aplicarea unei tehnici numite Transformata Fourier Rapidă (FFT), care transformă semnalele din domeniul timpului în domeniul frecvenței. Acest pas este crucial, deoarece ne permite să separăm semnalele pe baza frecvențelor lor, ceea ce corespunde diferitelor distanțe și viteze ale obiectelor.
+Algoritmul folosește două tipuri de ferestre - una pentru procesarea distanței și alta pentru viteza Doppler. Fereastra pentru distanță ajută la clarificarea poziției obiectelor, în timp ce fereastra Doppler este esențială pentru măsurarea vitezei acestora.
+După aplicarea acestor ferestre, algoritmul identifică semnalele cele mai puternice, care indică prezența unor obiecte semnificative în spațiu. Aceste semnale sunt apoi supuse unui proces de normalizare și analiză suplimentară pentru a extrage direcția de unde provin (unghiul de sosire). 
+
+\subsection{MUSIC}
+
+Algoritmul MUSIC este renumit pentru capacitatea sa de a identifica cu precizie unghiurile de sosire ale semnalelor dintr-un mediu cu zgomot de fundal.
+Funcționarea algoritmului începe cu analiza matricei de covarianță a semnalelor primite, o reprezentare matematică ce surprinde relațiile dintre semnalele captate de senzori. Din această matrice, extragem componentele care corespund zgomotului ambiental, ignorând astfel semnalele mai puternice care reprezintă țintele de interes.
+Algoritmul utilizează un concept numit 'vector de directivitate', o formulă matematică care ne ajută să analizăm semnalele din diferite direcții. Aplicăm această metodă pe întregul spectru de unghiuri posibile, de la -90 la 90 de grade, pentru a acoperi toate direcțiile din care s-ar putea apropia semnalele. \cite{music1}\cite{music2}
+
+\subsection{Root-MUSIC}
+
+Algoritmul ROOT-MUSIC inițiază procesul său analitic prin examinarea matricei de covarianță asociată cu semnalele receptionate de un sistem de senzori. Această matrice constituie un element fundamental în algoritmul de procesare a semnalelor, oferind o reprezentare detaliată a interacțiunilor dintre diferitele componente semnalice captate.
+Un element esențial în cadrul procesului algoritmic constă în izolarea componentelor matricei de covarianță care corespund zgomotului de fond. Această etapă este crucială pentru eliminarea influențelor exterioare nefavorabile și focalizarea asupra semnalelor semnificative.
+În continuare, algoritmul ROOT-MUSIC utilizează componentele zgomotului extrase pentru a forma un polinom caracteristic. Localizarea rădăcinilor acestui polinom în planul complex este instrumentală pentru determinarea direcțiilor de sosire ale semnalelor. Aceste rădăcini, fiecare posibil corespunzătoare unei surse de semnal, furnizează indicii valoroase referitoare la direcția de proveniență a semnalelor.
+Un pas semnificativ în implementarea algoritmului constă în filtrarea meticuloasă a rădăcinilor polinomului. Procesul se concentrează exclusiv pe acele rădăcini situate în interiorul sau pe marginea cercului unitar în planul complex, deoarece acestea sunt reprezentative pentru direcțiile efective de sosire ale semnalelor.
+În faza finală a procesării, algoritmul calculează sinusurile unghiurilor asociate cu rădăcinile selectate, convertind aceste valori în unghiuri exprimate în grade. Această metodologie permite o estimare precisă a direcțiilor din care semnalele își au originea. \cite{rootmusic1}\cite{rootmusic2}
+
+\subsection{ESPIRIT}
+
+Acest algoritm se bazează pe o analiză a matricei de covarianță a semnalelor, care este calculată din datele captate de un array de senzori.
+Procesul începe cu descompunerea matricei de covarianță prin intermediul valorilor și vectorilor proprii, concentrându-ne pe vectorii proprii asociați cu cele mai mari 'no\_targets' valori proprii. Acești vectori proprii reprezintă subspațiul semnalului și sunt esențiali pentru etapele ulterioare ale analizei.
+Algoritmul continuă cu calculul invarianței rotaționale dintre subspațiile semnalului. Acest lucru se realizează prin calculul matricei de transformare 'phi', folosind pseudo-inversa primilor 'no\_targets-1' vectori proprii și înmulțind rezultatul cu ultimii 'no\_targets-1' vectori proprii. Valorile proprii ale matricei 'phi' sunt apoi calculate, reprezentând informații esențiale despre direcția surselor semnalului.
+În etapa finală, algoritmul determină fazele acestor valori proprii, care sunt apoi scalate și transformate pentru a obține unghiurile de sosire ale semnalelor în grade. Acest proces implică împărțirea fazelor valorilor proprii la pi și scalarea lor în funcție de distanța dintre elementele array-ului de senzori. Rezultatul este conversia acestor valori în unghiuri măsurate în grade, folosind funcția arcsin. \cite{espirit1}\cite{espirit2}\cite{espirit3}
+
+\section{Comparatie Algoritmi}
+
+\subsection{Compararea Acuratetii}
+
+\paragraph{Un singur obiect} ~\\
+
+Pentru inceput, analizam acuratetea tuturor algoritmilor cu un singur obiect ce trebuie detectat.
+Obiectul are azimutul de 5 grade.
+
+\begin{table}[h]
+	\centering
+	\begin{tabular}{|c|c|c|c|c|}
+		\hline
+		Algoritm & Range-Doppler FFT & MUSIC & Root-MUSIC & ESPIRIT \\
+		\hline
+		Eroare Absoluta & 0.0422 & \text{\textless} 0.0001 & 0.0033 & 0.0097 \\
+		\hline
+		Eroare Relativa & 0.8453 & \text{\textless} 0.0001 &  0.0668 & 0.1950 \\
+		\hline
+	\end{tabular}
+	\caption{Rezultate un obiect}
+\end{table}
+
+\paragraph{Trei obiecte} ~\\
+
+Dorim sa vedem comportaentul algoritmilor si in cazul in care mai multe obiecte trebuie detectate.
+In acest caz avem trei obiecte, la unghiurile de 4, 5, respectiv 25.
+
+\begin{table}[h]
+	\centering
+	\begin{tabular}{|c|c|c|c|c|}
+		\hline
+		Algoritm & Range-Doppler FFT & MUSIC & Root-MUSIC & ESPIRIT \\
+		\hline
+		Eroare Absoluta O1 & 0.4807 & \text{\textless} 0.0001 & 0.0176 & 0.0468 \\
+		\hline
+		Eroare Relativa O1 & 12.01 & \text{\textless} 0.0001 & 0.44 & 1.17\\
+		\hline
+		Eroare Absoluta O2 & 18.60 & \text{\textless} 0.0001 & 0.0037 &  0.0384 \\
+		\hline
+		Eroare Relativa O2 & 372.05 & \text{\textless} 0.0001 & 0.0749 & 0.7684 \\
+		\hline
+		Eroare Absoluta O3 & 0.0765 & \text{\textless} 0.0001 & 0.0214 & 0.0256 \\
+		\hline
+		Eroare Relativa O3 & 0.3060 & \text{\textless} 0.0001 & 0.0858 & 0.1025 \\
+		\hline
+		Eroare Relativa Medie & 128.12 & \text{\textless} 0.0001 & 0.2008 & 0.6803 \\
+		\hline
+	\end{tabular}
+	\caption{Rezultate trei obiecte}
+\end{table}
+
+\subsection{Compararea Puterii Computationale}
+
+Pentru compararea puterii computationale vom folosi un numar mai mare de obiecte, 6 respectiv 10.
+Mai ales pentru aceasta comparatie, caching-ul s-a dovedit a fi extrem de util, reducand timpul unei rulari de la 87 de minute la 1 minut.
+
+\begin{table}[h]
+	\centeriin
+	\begin{tabular}{|c|c|c|c|c|}
+		\hline
+		Algoritm & Range-Doppler FFT & MUSIC & Root-MUSIC & ESPIRIT \\
+		\hline
+		Timp Rulare 1 & 10s & 0.721459 s & 5.29632 s & 0.157125 s \\
+		\hline
+		Timp Rulare 2 & 10.0068 s & 0.755758 s & 5.80911 s & 0.172585 s \\
+		\hline
+	\end{tabular}
+	\caption{Rezultate a compararii puterii computationale}
+\end{table}
+
+\section{Concluzii}
+
+Pe baza datelor extrase si prezentate mai sus, se observa ca MUSIC este cel mai precis algoritm pe care il putem folosi, avand o eroare relativa medie de sub 0.0001%.
+Acesta este urmat de Root-MUSIC, ESPIRIT si in final de Range-Doppler FFT.
+
+De asemenea, se poate observa ca Range-Doppler FFT devine imprecis atunci cand avem mai multe obiecte, la unghiuri apropiate.
+Acest algoritm nu a reusit sa distinga intre cele doua obiecte cu azimut de 4, respectiv 5, oferind un fals-pozitiv, la unghiul 23.
+
+Analizand performanta timpilor de rulare, observam ca algoritmul Range-Doppler se claseaza si aici pe ultimul loc.
+ESPIRIT este cel mai rapid dintre algoritmii prezentati, urmat de MUSIC si de Root-MUSIC.
+
+In concluzie, depinzand de nevoile aplicatiei, algoritmii MUSIC si ESPIRIT sunt cei mai buni.
+Pentru aplicatiile ce au o putere computationala limitata, sau au nevoie de rezultate in timp real cu o latenta mai mica, este recomandabil sa fie folosit ESPIRIT.
+Acesta are o acuratete mai slaba fata de algoritmii de tip MUSIC, insa are avantajul unui timp de rulare mai mic: 22\% din timpul de rulare al algoritmului MUSIC si 2,9\% din timpul de rulare al algoritmului Root-MUSIC.
+MUSIC este insa mai potrivit pentru aplicatiile pentru care acuratetea este critica, acesta avand cea mai mare acuratetea, si de asemenea un timp de rulare bun.
+
+\printbibliography
+
+\end{document}
