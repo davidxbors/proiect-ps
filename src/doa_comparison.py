@@ -209,7 +209,7 @@ if __name__ == "__main__":
     target_angles = [5]
 
     # run_all(no_targets, target_angles, RunType.NORMAL, "15")
-    # run_all(no_targets, target_angles, RunType.PROFILING, "15")
+    run_all(no_targets, target_angles, RunType.PROFILING, "15")
 
     # multiple (3) comparison
     no_targets = 3
@@ -219,22 +219,22 @@ if __name__ == "__main__":
     # run_all(no_targets, target_angles, RunType.NORMAL, None, "34525")
 
     # run_all(no_targets, target_angles, RunType.NORMAL, "34525")
-    # run_all(no_targets, target_angles, RunType.PROFILING, "34525")
+    run_all(no_targets, target_angles, RunType.PROFILING, "34525")
 
-    # multiple (6) comparison
-    no_targets = 6
-    target_angles = [4.5, 5, 10, 15, 20, 25]
+    # # multiple (6) comparison
+    # no_targets = 6
+    # target_angles = [4.5, 5, 10, 15, 20, 25]
 
-    # run_all(no_targets, target_angles, RunType.NORMAL, None, "6")
+    # # run_all(no_targets, target_angles, RunType.NORMAL, None, "6")
 
-    # run_all(no_targets, target_angles, RunType.NORMAL, "6")
-    run_all(no_targets, target_angles, RunType.PROFILING, "6")
+    # # run_all(no_targets, target_angles, RunType.NORMAL, "6")
+    # run_all(no_targets, target_angles, RunType.PROFILING, "6")
 
-    # multiple (10) comparison
-    no_targets = 10
-    target_angles = [2, 4.5, 5, 15, 20, 50, 50.25, 60, 70, 75]
+    # # multiple (10) comparison
+    # no_targets = 10
+    # target_angles = [2, 4.5, 5, 15, 20, 50, 50.25, 60, 70, 75]
 
-    # run_all(no_targets, target_angles, RunType.NORMAL, None, "10")
+    # # run_all(no_targets, target_angles, RunType.NORMAL, None, "10")
 
-    # run_all(no_targets, target_angles, RunType.NORMAL, "10")
-    run_all(no_targets, target_angles, RunType.PROFILING, "10")
+    # # run_all(no_targets, target_angles, RunType.NORMAL, "10")
+    # run_all(no_targets, target_angles, RunType.PROFILING, "10")
