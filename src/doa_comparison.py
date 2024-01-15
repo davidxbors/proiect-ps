@@ -209,7 +209,7 @@ if __name__ == "__main__":
     target_angles = [5]
 
     # run_all(no_targets, target_angles, RunType.NORMAL, "15")
-    run_all(no_targets, target_angles, RunType.PROFILING, "15")
+    # run_all(no_targets, target_angles, RunType.PROFILING, "15")
 
     # multiple (3) comparison
     no_targets = 3
@@ -218,8 +218,8 @@ if __name__ == "__main__":
     # generate data as well
     # run_all(no_targets, target_angles, RunType.NORMAL, None, "34525")
 
-    # run_all(no_targets, target_angles, RunType.NORMAL, "34525")
-    run_all(no_targets, target_angles, RunType.PROFILING, "34525")
+    run_all(no_targets, target_angles, RunType.NORMAL, "34525")
+    # run_all(no_targets, target_angles, RunType.PROFILING, "34525")
 
     # # multiple (6) comparison
     # no_targets = 6
